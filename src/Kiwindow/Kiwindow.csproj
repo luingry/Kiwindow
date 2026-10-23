@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Kiwindow</AssemblyName>
+    <RootNamespace>Kiwindow.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\assets\brand\kiwindow.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The standalone app ships the SDK for its design system (theme, controls). -->
+    <Reference Include="SwissTechKnife.Sdk" HintPath="..\..\lib\SwissTechKnife.Sdk.dll" Private="true" />
+    <ProjectReference Include="..\Kiwindow.Core\Kiwindow.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="..\..\assets\brand\kiwindow.ico" Link="kiwindow.ico" />
+  </ItemGroup>
+</Project>

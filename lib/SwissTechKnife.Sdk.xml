@@ -1,0 +1,157 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>SwissTechKnife.Sdk</name>
+    </assembly>
+    <members>
+        <member name="T:SwissTechKnife.Sdk.IModule">
+            <summary>
+            Entry point of a module. The host creates one instance per enabled module, on the UI thread,
+            through a public parameterless constructor named in the package's <c>module.json</c>.
+            </summary>
+            <remarks>
+            Lifecycle: constructor → <see cref="M:SwissTechKnife.Sdk.IModule.Initialize(SwissTechKnife.Sdk.IModuleContext)"/> → <see cref="M:SwissTechKnife.Sdk.IModule.CreateView"/> (zero or more times) →
+            <see cref="M:System.IDisposable.Dispose"/> when the module is disabled, uninstalled or the host exits.
+            Keep the constructor and <see cref="M:SwissTechKnife.Sdk.IModule.Initialize(SwissTechKnife.Sdk.IModuleContext)"/> cheap: heavy work belongs on a background thread.
+            </remarks>
+        </member>
+        <member name="M:SwissTechKnife.Sdk.IModule.Initialize(SwissTechKnife.Sdk.IModuleContext)">
+            <summary>Called once before anything else. Store the context; do not block.</summary>
+        </member>
+        <member name="M:SwissTechKnife.Sdk.IModule.CreateView">
+            <summary>
+            Builds the module's page. Called the first time the user opens the module; the host keeps the
+            returned element alive (state is preserved while navigating) until the module is disposed.
+            </summary>
+        </member>
+        <member name="T:SwissTechKnife.Sdk.IBackgroundModule">
+            <summary>
+            Optional: modules that must run without their page open (hooks, tray work, listeners).
+            Requires <c>"activation": "startup"</c> in <c>module.json</c>; the host then initializes the module
+            at startup and calls <see cref="M:SwissTechKnife.Sdk.IBackgroundModule.Start"/> right after <see cref="M:SwissTechKnife.Sdk.IModule.Initialize(SwissTechKnife.Sdk.IModuleContext)"/>.
+            </summary>
+        </member>
+        <member name="M:SwissTechKnife.Sdk.IBackgroundModule.Start">
+            <summary>Starts background work. Must return quickly.</summary>
+        </member>
+        <member name="M:SwissTechKnife.Sdk.IBackgroundModule.Stop">
+            <summary>Stops background work. Called before <see cref="M:System.IDisposable.Dispose"/>.</summary>
+        </member>
+        <member name="T:SwissTechKnife.Sdk.IModuleSettings">
+            <summary>
+            Optional: the module offers customization. Requires <c>"settings": true</c> in <c>module.json</c>
+            (so the host can show the tab without loading the module). The view appears in the
+            "Settings" tab of the module's details dialog; changes should apply immediately.
+            </summary>
+        </member>
+        <member name="M:SwissTechKnife.Sdk.IModuleSettings.CreateSettingsView">
+            <summary>Called the first time the tab opens; the host keeps the element until the module is disposed.</summary>
+        </member>
+        <member name="T:SwissTechKnife.Sdk.IModuleTrayMenu">
+            <summary>
+            Optional: commands for the module's own notification-area icon, which the user turns on in the module's
+            settings ("Show icon in the notification area"). The host owns the icon: its menu starts with "Open",
+            followed by these items. Do not add an Exit/Close item: the module's enable switch controls its lifetime.
+            </summary>
+        </member>
+        <member name="M:SwissTechKnife.Sdk.IModuleTrayMenu.CreateTrayMenuItems">
+            <summary>
+            Called on the UI thread every time the menu opens, so items can reflect the current state.
+            Return new <c>MenuItem</c>/<c>Separator</c> instances each time (an element can have only one parent).
+            </summary>
+        </member>
+        <member name="T:SwissTechKnife.Sdk.IModuleViewLifecycle">
+            <summary>Optional: notified when the module's page is shown or hidden (pause timers while hidden).</summary>
+        </member>
+        <member name="T:SwissTechKnife.Sdk.IModuleContext">
+            <summary>Services the host gives each module.</summary>
+        </member>
+        <member name="P:SwissTechKnife.Sdk.IModuleContext.ModuleId">
+            <summary>Stable module id from the catalog (e.g. <c>smooth-mice</c>).</summary>
+        </member>
+        <member name="P:SwissTechKnife.Sdk.IModuleContext.InstallDirectory">
+            <summary>Folder the package was extracted into. Read-only: it is replaced on update.</summary>
+        </member>
+        <member name="P:SwissTechKnife.Sdk.IModuleContext.DataDirectory">
+            <summary>Per-module writable folder that survives updates (settings, caches, logs).</summary>
+        </member>
+        <member name="P:SwissTechKnife.Sdk.IModuleContext.Dispatcher">
+            <summary>UI dispatcher shared by the host and every module.</summary>
+        </member>
+        <member name="M:SwissTechKnife.Sdk.IModuleContext.Notify(System.String,SwissTechKnife.Sdk.NotificationKind)">
+            <summary>Shows a transient host notification (toast).</summary>
+        </member>
+        <member name="M:SwissTechKnife.Sdk.IModuleContext.ShowModulePage">
+            <summary>Brings the host window forward and navigates to this module's page.</summary>
+        </member>
+        <member name="F:SwissTechKnife.Sdk.SdkInfo.ContractVersion">
+            <summary>
+            Contract version implemented by this host. A package whose <c>module.json</c> declares a higher
+            <c>sdkVersion</c> is refused at install time.
+            </summary>
+        </member>
+        <member name="T:SwissTechKnife.Sdk.SegmentedPanel">
+            <summary>
+            Host for <c>Segmented.Item</c> radio buttons. Draws one shared indicator behind the checked item and
+            slides it to the newly checked item instead of jumping. Resizes snap without animation.
+            <code>
+            &lt;Border Style="{StaticResource Segmented.Container}"&gt;
+                &lt;ui:SegmentedPanel&gt;
+                    &lt;RadioButton Style="{StaticResource Segmented.Item}" GroupName="View" Content="A" IsChecked="True" /&gt;
+                    &lt;RadioButton Style="{StaticResource Segmented.Item}" GroupName="View" Content="B" /&gt;
+                &lt;/ui:SegmentedPanel&gt;
+            &lt;/Border&gt;
+            </code>
+            </summary>
+        </member>
+        <member name="T:SwissTechKnife.Sdk.Ui">
+            <summary>
+            Attached properties read by the design-system control templates.
+            XAML: <c>xmlns:ui="clr-namespace:SwissTechKnife.Sdk;assembly=SwissTechKnife.Sdk"</c>, then
+            <c>&lt;Button ui:Ui.Icon="&amp;#xE896;" Content="Instalar" Style="{StaticResource Button.Primary}" /&gt;</c>.
+            </summary>
+        </member>
+        <member name="F:SwissTechKnife.Sdk.Ui.IconProperty">
+            <summary>Glyph from the icon font (Segoe Fluent Icons) shown before the content.</summary>
+        </member>
+        <member name="F:SwissTechKnife.Sdk.Ui.HoverBackgroundProperty">
+            <summary>Layer faded in on hover, above the background.</summary>
+        </member>
+        <member name="F:SwissTechKnife.Sdk.Ui.PressedBackgroundProperty">
+            <summary>Layer faded in while pressed, above the hover layer.</summary>
+        </member>
+        <member name="F:SwissTechKnife.Sdk.Ui.PlaceholderProperty">
+            <summary>Hint text shown by inputs while they are empty.</summary>
+        </member>
+        <member name="T:XamlGeneratedNamespace.GeneratedInternalTypeHelper">
+            <summary>
+            GeneratedInternalTypeHelper
+            </summary>
+        </member>
+        <member name="M:XamlGeneratedNamespace.GeneratedInternalTypeHelper.CreateInstance(System.Type,System.Globalization.CultureInfo)">
+            <summary>
+            CreateInstance
+            </summary>
+        </member>
+        <member name="M:XamlGeneratedNamespace.GeneratedInternalTypeHelper.GetPropertyValue(System.Reflection.PropertyInfo,System.Object,System.Globalization.CultureInfo)">
+            <summary>
+            GetPropertyValue
+            </summary>
+        </member>
+        <member name="M:XamlGeneratedNamespace.GeneratedInternalTypeHelper.SetPropertyValue(System.Reflection.PropertyInfo,System.Object,System.Object,System.Globalization.CultureInfo)">
+            <summary>
+            SetPropertyValue
+            </summary>
+        </member>
+        <member name="M:XamlGeneratedNamespace.GeneratedInternalTypeHelper.CreateDelegate(System.Type,System.Object,System.String)">
+            <summary>
+            CreateDelegate
+            </summary>
+        </member>
+        <member name="M:XamlGeneratedNamespace.GeneratedInternalTypeHelper.AddEventHandler(System.Reflection.EventInfo,System.Object,System.Delegate)">
+            <summary>
+            AddEventHandler
+            </summary>
+        </member>
+    </members>
+</doc>

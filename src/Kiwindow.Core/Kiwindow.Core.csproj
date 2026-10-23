@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Everything Kiwindow does: the capture/restore engine, the shared UI (KiwindowView) and the
+    SwissTechKnife module entry point (Kiwindow.KiwindowModule). The standalone app hosts the same view.
+  -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Kiwindow.Core</AssemblyName>
+    <RootNamespace>Kiwindow</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Compile-only here: the SwissTechKnife host provides the shared copy; the standalone app ships its own. -->
+    <Reference Include="SwissTechKnife.Sdk" HintPath="..\..\lib\SwissTechKnife.Sdk.dll" Private="false" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="module.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Kiwindow" />
+    <InternalsVisibleTo Include="Kiwindow.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,10 @@
+bin/
+obj/
+artifacts/
+.vs/
+*.user
+*.suo
+.claude/settings.local.json
+
+# Windows reserved device name; a stray "> nul" redirect creates it and git cannot index it
+nul

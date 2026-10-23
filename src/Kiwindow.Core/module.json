@@ -1,0 +1,19 @@
+{
+  "id": "kiwindow",
+  "version": "1.0.0",
+  "entryAssembly": "Kiwindow.Core.dll",
+  "entryType": "Kiwindow.KiwindowModule",
+  "sdkVersion": 1,
+  "activation": "onDemand",
+  "loadMode": "memory",
+  "releaseNotes": [
+    {
+      "version": "1.0.0",
+      "notes": [
+        "First release: capture where every window sits and put it all back with one click, reopening what is closed.",
+        "Edit a layout on a map of your monitors: drag to move, pull the edges to resize, snap to edges and other windows.",
+        "Apply or capture layouts straight from the notification-area menu."
+      ]
+    }
+  ]
+}

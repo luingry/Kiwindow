@@ -1,0 +1,62 @@
+name: Release
+
+# A new version on main (Directory.Build.props) publishes v<version> with the installer
+# Kiwindow-<version>-setup.exe and the SwissTechKnife module package kiwindow-<version>.zip.
+# The SwissTechKnife catalog sync picks the package up on its own; notes come from the "releaseNotes"
+# entry for that version in src/Kiwindow.Core/module.json.
+on:
+  push:
+    branches: [main]
+    paths: ['Directory.Build.props', 'src/Kiwindow.Core/module.json']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.x'
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+      - name: Build, test, package
+        shell: pwsh
+        run: ./scripts/build.ps1 -Configuration Release -Installer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kiwindow
+          path: |
+            artifacts/*.zip
+            artifacts/installer/*.exe
+          if-no-files-found: error
+      - name: Publish release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $manifest = Get-Content 'src/Kiwindow.Core/module.json' -Raw | ConvertFrom-Json
+          $version = $manifest.version
+          $tag = "v$version"
+          $zip = "artifacts/$($manifest.id)-$version.zip"
+          $setup = "artifacts/installer/Kiwindow-$version-setup.exe"
+          foreach ($f in $zip, $setup) { if (-not (Test-Path -LiteralPath $f)) { throw "$f was not produced." } }
+          gh release view $tag --json tagName *> $null
+          if ($LASTEXITCODE -eq 0) { Write-Host "Release $tag already exists; nothing to publish."; exit 0 }
+          $own = @($manifest.releaseNotes | Where-Object { $_.version -eq $version }) | Select-Object -First 1
+          $notes = @($own.notes | ForEach-Object { "- $_" }) -join "`n"
+          if (-not $notes) { $notes = "Version $version." }
+          $notes += "`n`n**Download:** ``Kiwindow-$version-setup.exe`` (Windows 10/11, no admin rights needed).`nSwissTechKnife users: install **Kiwindow** from the Modules page instead."
+          gh release create $tag $setup $zip --target $env:GITHUB_SHA --title "Kiwindow $version" --notes $notes
+          if ($LASTEXITCODE -ne 0) { throw "Failed to publish $tag." }

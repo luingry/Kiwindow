@@ -1,0 +1,317 @@
+<UserControl x:Class="Kiwindow.Ui.KiwindowView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:k="clr-namespace:Kiwindow.Ui"
+             xmlns:ui="clr-namespace:SwissTechKnife.Sdk;assembly=SwissTechKnife.Sdk"
+             FontFamily="{StaticResource Font.Text}" FontSize="{StaticResource FontSize.Body}"
+             Foreground="{StaticResource Brush.Text.Primary}"
+             UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+    <!--
+        The whole Kiwindow UI: hosted by the standalone window and by the SwissTechKnife module page.
+        Uses only design-system keys from SwissTechKnife.Sdk (docs/DESIGN_SYSTEM.md in the host repository).
+        Layout: profiles on the left (the list is the navigation), the open profile on the right with one
+        primary action (Apply), its map and its window list.
+    -->
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Kiwindow.Core;component/Theme/Brand.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Inline-editable title: reads as text until hovered or focused. -->
+            <Style x:Key="TitleBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                <Setter Property="Background" Value="{StaticResource Brush.Transparent}" />
+                <Setter Property="FontFamily" Value="{StaticResource Font.Display}" />
+                <Setter Property="FontSize" Value="{StaticResource FontSize.Title}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Padding" Value="8,0" />
+                <Setter Property="MinHeight" Value="40" />
+                <Setter Property="Margin" Value="-8,0,0,0" />
+            </Style>
+
+            <!-- Compact number cell: tabular digits, surface appears on hover/focus only. -->
+            <Style x:Key="NumBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                <Setter Property="Background" Value="{StaticResource Brush.Transparent}" />
+                <Setter Property="MinHeight" Value="30" />
+                <Setter Property="Padding" Value="6,0" />
+                <Setter Property="Margin" Value="2,0" />
+                <Setter Property="HorizontalContentAlignment" Value="Right" />
+                <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+                <Setter Property="ui:Ui.CornerRadius" Value="{StaticResource Radius.Sm}" />
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Foreground" Value="{StaticResource Brush.Text.Disabled}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="ColHeader" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                <Setter Property="Foreground" Value="{StaticResource Brush.Text.Tertiary}" />
+            </Style>
+
+            <!-- Remove button on a row: quiet until hovered, then danger tint. -->
+            <Style x:Key="RowRemove" TargetType="Button" BasedOn="{StaticResource Button.Icon.Sm}">
+                <Setter Property="Foreground" Value="{StaticResource Brush.Text.Tertiary}" />
+                <Setter Property="ui:Ui.HoverBackground" Value="{StaticResource Brush.Danger.Soft}" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <ContextMenu x:Key="WindowMenu" x:Shared="False" Opened="WindowMenu_Opened">
+                <MenuItem Header="{k:Loc Menu.Front}" ui:Ui.Icon="&#xE74A;" Click="Front_Click" />
+                <MenuItem Header="{k:Loc Menu.Up}" ui:Ui.Icon="&#xE70E;" Click="Up_Click" />
+                <MenuItem Header="{k:Loc Menu.Down}" ui:Ui.Icon="&#xE70D;" Click="Down_Click" />
+                <MenuItem Header="{k:Loc Menu.Back}" ui:Ui.Icon="&#xE74B;" Click="Back_Click" />
+                <Separator />
+                <MenuItem Header="{k:Loc Menu.UseCurrent}" ui:Ui.Icon="&#xE72C;" Click="UseCurrent_Click" />
+                <MenuItem Header="{k:Loc Menu.ToggleMax}" ui:Ui.Icon="&#xE922;" Click="ToggleMax_Click" />
+                <Separator />
+                <MenuItem Header="{k:Loc Menu.Remove}" ui:Ui.Icon="&#xE74D;" Click="RemoveSelected_Click" />
+            </ContextMenu>
+
+            <ContextMenu x:Key="ProfileMenu" x:Shared="False" Opened="ProfileMenu_Opened">
+                <MenuItem Header="{k:Loc Menu.Replace}" ui:Ui.Icon="&#xE72C;" Click="Replace_Click" />
+                <MenuItem Header="{k:Loc Menu.Duplicate}" ui:Ui.Icon="&#xE8C8;" Click="Duplicate_Click" />
+                <MenuItem Header="{k:Loc Menu.ShowFile}" ui:Ui.Icon="&#xE838;" Click="ShowFile_Click" />
+                <MenuItem Tag="CopyCommand" Header="{k:Loc Menu.CopyCommand}" ui:Ui.Icon="&#xE943;" Click="CopyCommand_Click" />
+                <Separator />
+                <MenuItem Header="{k:Loc Menu.Delete}" ui:Ui.Icon="&#xE74D;" Click="Delete_Click" />
+            </ContextMenu>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="268" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ═══ Profiles ═══ -->
+        <DockPanel Margin="16,16,8,16">
+            <!-- Brand row: standalone app only (the host already shows icon, name and version). -->
+            <DockPanel x:Name="BrandRow" DockPanel.Dock="Top" Margin="8,4,0,20" Visibility="Collapsed">
+                <Image Source="{StaticResource Brand.Logo}" Width="32" Height="32" />
+                <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="Kiwindow" Style="{StaticResource Text.Subtitle}" />
+                    <TextBlock x:Name="VersionText" Style="{StaticResource Text.Caption}" />
+                </StackPanel>
+            </DockPanel>
+
+            <Button x:Name="CaptureButton" DockPanel.Dock="Top" Content="{k:Loc Capture}" ui:Ui.Icon="&#xE722;"
+                    HorizontalAlignment="Stretch" Click="Capture_Click" ToolTip="{k:Loc Capture.Tip}" Margin="0,0,0,22" />
+
+            <Button DockPanel.Dock="Bottom" Style="{StaticResource Button.Ghost}" ui:Ui.Icon="&#xE838;" Content="{k:Loc OpenFolder}"
+                    HorizontalAlignment="Left" Click="OpenFolder_Click" FontWeight="Normal" Margin="0,8,0,0" />
+
+            <DockPanel DockPanel.Dock="Top" Margin="12,0,8,6">
+                <TextBlock x:Name="ProfileCount" DockPanel.Dock="Right" Style="{StaticResource Text.Overline}" />
+                <TextBlock Text="{k:Loc Profiles}" Style="{StaticResource Text.Overline}" />
+            </DockPanel>
+
+            <ListBox x:Name="ProfileList" SelectionChanged="ProfileList_SelectionChanged"
+                     ContextMenu="{StaticResource ProfileMenu}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Nome}" Style="{StaticResource Text.BodyStrong}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Descricao}" Style="{StaticResource Text.Caption}" Margin="0,2,0,0" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Style="{StaticResource Button.Icon.Sm}" ui:Ui.Icon="&#xE768;"
+                                    Foreground="{StaticResource Brush.Accent}" ToolTip="{k:Loc ApplyThis}"
+                                    Click="ApplyItem_Click" Tag="{Binding}" Margin="6,0,-4,0"
+                                    Visibility="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Converter={x:Static k:Converters.ShowWhenTrue}}" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <!-- ═══ Open profile ═══ -->
+        <Grid Grid.Column="1" x:Name="Editor" Margin="16,16,20,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="1.3*" MinHeight="200" />
+                <RowDefinition Height="14" />
+                <RowDefinition Height="*" MinHeight="170" />
+            </Grid.RowDefinitions>
+
+            <!-- Header: name (inline rename) + meta on the left, actions on the right. -->
+            <Grid Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBox x:Name="NameBox" Style="{StaticResource TitleBox}" TextChanged="NameBox_TextChanged"
+                             ToolTip="{k:Loc Rename.Tip}" HorizontalAlignment="Left" MinWidth="220" />
+                    <TextBlock x:Name="MetaText" Style="{StaticResource Text.Caption}" Margin="0,2,0,0" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border x:Name="DirtyChip" Style="{StaticResource Chip}" Background="{StaticResource Brush.Warning.Soft}"
+                            VerticalAlignment="Center" Margin="0,0,10,0" Visibility="Collapsed">
+                        <TextBlock Text="{k:Loc Unsaved}" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Warning}" />
+                    </Border>
+                    <Button x:Name="DiscardButton" Style="{StaticResource Button.Ghost}" Content="{k:Loc Discard}"
+                            Click="Discard_Click" Margin="0,0,6,0" Visibility="Collapsed" />
+                    <Button x:Name="SaveButton" Content="{k:Loc Save}" ui:Ui.Icon="&#xE74E;" Click="Save_Click"
+                            Margin="0,0,8,0" ToolTip="Ctrl+S" Visibility="Collapsed" />
+                    <Button x:Name="ApplyButton" Style="{StaticResource Button.Primary}" ui:Ui.Icon="&#xE768;"
+                            Click="Apply_Click" ToolTip="{k:Loc Apply.Tip}" Padding="18,0">
+                        <TextBlock x:Name="ApplyText" Text="{k:Loc Apply}" />
+                    </Button>
+                    <Button x:Name="MoreButton" Style="{StaticResource Button.Icon}" ui:Ui.Icon="&#xE712;"
+                            Margin="6,0,0,0" Click="More_Click" ToolTip="{k:Loc More}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- Map -->
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="0">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="20,16,20,0">
+                        <TextBlock DockPanel.Dock="Right" Text="{k:Loc Preview.Hint}" Style="{StaticResource Text.Caption}"
+                                   Foreground="{StaticResource Brush.Text.Tertiary}" TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" Margin="16,0,0,0" />
+                        <TextBlock Text="{k:Loc Preview}" Style="{StaticResource Text.Overline}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <k:LayoutPreview x:Name="Preview" Margin="8" ContextMenu="{StaticResource WindowMenu}" />
+                </DockPanel>
+            </Border>
+
+            <GridSplitter Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent"
+                          ResizeDirection="Rows" Cursor="SizeNS" FocusVisualStyle="{x:Null}">
+                <GridSplitter.Template>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border Background="Transparent">
+                            <Border x:Name="Grip" Width="36" Height="4" CornerRadius="2" Background="{StaticResource Brush.Surface4}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.6" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Grip" Property="Opacity" Value="1" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </GridSplitter.Template>
+            </GridSplitter>
+
+            <!-- Windows -->
+            <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0">
+                <DockPanel Margin="8,16,8,8">
+                    <DockPanel DockPanel.Dock="Top" Margin="12,0,12,10">
+                        <TextBlock DockPanel.Dock="Right" Text="{k:Loc Windows.Hint}" Style="{StaticResource Text.Caption}"
+                                   Foreground="{StaticResource Brush.Text.Tertiary}" VerticalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{k:Loc Windows}" Style="{StaticResource Text.Overline}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="WindowCount" Style="{StaticResource Text.Overline}" Foreground="{StaticResource Brush.Text.Tertiary}"
+                                       VerticalAlignment="Center" Margin="8,0,0,0" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <Grid DockPanel.Dock="Top" Margin="12,0,12,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="40" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="84" />
+                            <ColumnDefinition Width="264" />
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="36" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="1" Text="{k:Loc Col.Window}" Style="{StaticResource ColHeader}" />
+                        <TextBlock Grid.Column="2" Text="{k:Loc Col.Monitor}" Style="{StaticResource ColHeader}" />
+                        <UniformGrid Grid.Column="3" Columns="4">
+                            <TextBlock Text="X" Style="{StaticResource ColHeader}" TextAlignment="Right" Margin="0,0,8,0" />
+                            <TextBlock Text="Y" Style="{StaticResource ColHeader}" TextAlignment="Right" Margin="0,0,8,0" />
+                            <TextBlock Text="{k:Loc Col.Width}" Style="{StaticResource ColHeader}" TextAlignment="Right" Margin="0,0,8,0" />
+                            <TextBlock Text="{k:Loc Col.Height}" Style="{StaticResource ColHeader}" TextAlignment="Right" Margin="0,0,8,0" />
+                        </UniformGrid>
+                        <TextBlock Grid.Column="4" Text="{k:Loc Col.Maximized}" Style="{StaticResource ColHeader}" Margin="12,0,0,0" />
+                    </Grid>
+
+                    <ListBox x:Name="WindowList" SelectionChanged="WindowList_SelectionChanged" KeyDown="WindowList_KeyDown"
+                             ContextMenu="{StaticResource WindowMenu}" VirtualizingPanel.ScrollUnit="Pixel">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                <Setter Property="Padding" Value="4,4" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="84" />
+                                        <ColumnDefinition Width="264" />
+                                        <ColumnDefinition Width="96" />
+                                        <ColumnDefinition Width="36" />
+                                    </Grid.ColumnDefinitions>
+                                    <!-- App icon on a tile tinted with the window's preview color. -->
+                                    <Grid Width="30" Height="30" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,0,0,0">
+                                        <Border CornerRadius="{StaticResource Radius.Sm}" Background="{Binding Indice, Converter={x:Static k:Converters.TintFill}}" />
+                                        <Image Source="{Binding Icone}" Width="16" Height="16" RenderOptions.BitmapScalingMode="HighQuality" />
+                                    </Grid>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="6,0,12,0">
+                                        <TextBlock Text="{Binding NomeProcesso}" Style="{StaticResource Text.BodyStrong}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Titulo}" Style="{StaticResource Text.Caption}" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding Detalhe}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="{Binding MonitorNome}" Style="{StaticResource Text.Secondary}" VerticalAlignment="Center" />
+                                    <UniformGrid Grid.Column="3" Columns="4" VerticalAlignment="Center"
+                                                 IsEnabled="{Binding Maximizada, Converter={x:Static k:Converters.Not}}">
+                                        <TextBox Style="{StaticResource NumBox}" Text="{Binding X, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBox Style="{StaticResource NumBox}" Text="{Binding Y, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBox Style="{StaticResource NumBox}" Text="{Binding Largura, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBox Style="{StaticResource NumBox}" Text="{Binding Altura, UpdateSourceTrigger=PropertyChanged}" />
+                                    </UniformGrid>
+                                    <CheckBox Grid.Column="4" Style="{StaticResource Switch}" IsChecked="{Binding Maximizada}"
+                                              VerticalAlignment="Center" Margin="12,0,0,0" />
+                                    <Button Grid.Column="5" Style="{StaticResource RowRemove}" ui:Ui.Icon="&#xE711;"
+                                            ToolTip="{k:Loc Remove.Tip}" Click="RemoveWindow_Click" Tag="{Binding}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- ═══ Empty state ═══ -->
+        <Grid Grid.Column="1" x:Name="Empty" Visibility="Collapsed">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400">
+                <Image Source="{StaticResource Brand.Mark}" Width="88" Height="88" HorizontalAlignment="Center" Opacity="0.95" />
+                <TextBlock Text="{k:Loc Empty.Title}" Style="{StaticResource Text.Title}" HorizontalAlignment="Center" Margin="0,22,0,8" />
+                <TextBlock Text="{k:Loc Empty.Text}" Style="{StaticResource Text.Paragraph}" TextAlignment="Center" />
+                <Button Style="{StaticResource Button.Primary}" ui:Ui.Icon="&#xE722;" Content="{k:Loc Capture}"
+                        HorizontalAlignment="Center" Margin="0,24,0,0" Padding="20,0" Click="Capture_Click" />
+            </StackPanel>
+        </Grid>
+
+        <!-- ═══ Toast ═══ -->
+        <Border x:Name="Toast" Grid.ColumnSpan="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,28,28"
+                Background="{StaticResource Brush.Surface4}" CornerRadius="{StaticResource Radius.Md}" Padding="16,12,18,13"
+                MaxWidth="440" MinWidth="260" Visibility="Collapsed" Opacity="0" Effect="{StaticResource Elevation.Popup}"
+                MouseLeftButtonDown="Toast_Click" Cursor="Hand">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="ToastShift" Y="8" />
+            </Border.RenderTransform>
+            <DockPanel>
+                <TextBlock x:Name="ToastIcon" DockPanel.Dock="Left" Style="{StaticResource Text.Icon}" FontSize="16"
+                           Margin="0,1,12,0" VerticalAlignment="Top" />
+                <StackPanel>
+                    <TextBlock x:Name="ToastTitle" Style="{StaticResource Text.BodyStrong}" TextWrapping="Wrap" />
+                    <TextBlock x:Name="ToastBody" Style="{StaticResource Text.Caption}" Foreground="{StaticResource Brush.Text.Secondary}"
+                               TextWrapping="Wrap" Margin="0,3,0,0" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Kiwindow.Tests</AssemblyName>
+    <RootNamespace>Kiwindow.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="SwissTechKnife.Sdk" HintPath="..\..\lib\SwissTechKnife.Sdk.dll" Private="true" />
+    <ProjectReference Include="..\..\src\Kiwindow.Core\Kiwindow.Core.csproj" />
+  </ItemGroup>
+</Project>
